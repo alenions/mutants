@@ -6,8 +6,8 @@ cloud.aws:
     static: us-west-1
     auto: false
   credentials:
-    access-key: AKIAI56WO4GIZKHOGS6Q
-    secret-key: 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
+    access-key: 
+    secret-key: 
     useDefaultAwsCredentialsChain: true
   sqsname: mutant-sqs
   end-point:

@@ -6,12 +6,12 @@ cloud.aws:
     static: us-west-1
     auto: false
   credentials:
-    access-key: AKIAQVFEBEFWWU3U2WEE
-    secret-key: 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
+    access-key: AKIAI56WO4GIZKHOGS6Q
+    secret-key: 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
     useDefaultAwsCredentialsChain: true
   sqsname: mutant-sqs
   end-point:
-    uri: https://sqs.us-west-1.amazonaws.com/045441163629/mutant-sqs
+    uri: https://sqs.us-west-1.amazonaws.com/374609988338/mutants-sqs
   stack:
     auto: false
 

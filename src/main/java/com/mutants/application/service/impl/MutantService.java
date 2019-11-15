@@ -2,70 +2,117 @@ package com.mutants.application.service.impl;
 
 import com.mutants.application.dto.MutantGenDto;
 import com.mutants.application.service.IMutantService;
+import com.mutants.application.service.ISqsService;
+import com.mutants.infrastructurecross.util.ArrayUtil;
+import com.mutants.infrastructurecross.util.Json;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 @Service
 @Slf4j
 public class MutantService implements IMutantService{
-
     @Autowired
     private MutantGenDto mutantGenDto;
 
+    @Autowired
+    private ISqsService sqsService;
+
     @Bean
-    public MutantGenDto getArrayVertical(){
+    public MutantGenDto getArrayVertical(@Value("${mutantdna}") String[] mutantdna){
         MutantGenDto mutantGenDto = new MutantGenDto();
-        mutantGenDto.setDnaVertical(new String[] {"ATGCGA","CAGTGC","TTATGT","AGAAGG","CCCCTA","TCACTG"});
-        mutantGenDto.setDnaHorizontal(new String[] {"ACTACT","TATGCC","GGAACA","CTTACC","GGGGTT","ACTGAG"});
-        mutantGenDto.setDnaDiagonal(new String[] {"ACTACT","TATGCC","GGAACA","CTTACC","GGGGTT","ACTGAG"});
+        mutantGenDto.setDnaHorizontal(mutantdna);
+        mutantGenDto.setDnaVertical(ArrayUtil.orderVerticalArray(mutantdna));
+        mutantGenDto.setDnaDiagonal(ArrayUtil.orderDiagonalArray(new String[] {}));
         return mutantGenDto;
     }
 
+    @Override
+    @Async("asyncExecutor")
     public boolean isMutant(String[] dna){
-        boolean isMutant = false;
-
-        int valueHorizontal = 0;
-        int valueVertical = 0;
-        int valueDiagonal = 0;
         int countFound = 0;
-
+        boolean isMutant = false;
         for(String nitrogenousSubject : dna){
-            try{
-                for(String nitrogenousMutant: mutantGenDto.getDnaHorizontal()){
-                    if(nitrogenousMutant.contains(nitrogenousSubject.substring(valueHorizontal,valueHorizontal+4))){
-                        countFound++;
-                        break;
-                    }else{
-                        valueHorizontal++;
-                    }
-                }
-            }catch(StringIndexOutOfBoundsException e){
-                log.error("nitrogenousSubject out range. ");
-            }finally{
-                valueHorizontal = 0;
+            CompletableFuture<Integer> cantPointMutantHorizontal = checkDnaMutantHorizontalAsync(nitrogenousSubject);
+            CompletableFuture<Integer> cantPointMutantVertical = checkDnaMutantVerticalAsync(nitrogenousSubject);
+            CompletableFuture<Integer> cantPointMutantDiagonal = checkDnaMutantDiagonalAsync(nitrogenousSubject);
+            try {
+                CompletableFuture.allOf(cantPointMutantHorizontal, cantPointMutantVertical, cantPointMutantDiagonal).join();
+                countFound = countFound +
+                cantPointMutantHorizontal.get() +
+                cantPointMutantVertical.get() +
+                cantPointMutantDiagonal.get();
+            } catch (InterruptedException | ExecutionException e) {
+                Thread.currentThread().interrupt();
+                log.error(e.getMessage());
             }
-
-            try{
-                for(String nitrogenousMutant: mutantGenDto.getDnaVertical()){
-                    if(nitrogenousMutant.contains(nitrogenousSubject.substring(valueVertical,valueVertical+4))){
-                        countFound++;
-                        break;
-                    }else{
-                        valueVertical++;
-                    }
-                }
-            }catch(StringIndexOutOfBoundsException e){
-                log.error("nitrogenousSubject out range. ");
-            }finally{
-                valueVertical = 0;
-            }
-
-            if(countFound == 2){
+            if(countFound >= 2){
+                sqsService.sendNotificationSQS(Json.toJson(dna));
                 return true;
             }
         }
         return isMutant;
+    }
+
+    private CompletableFuture<Integer> checkDnaMutantHorizontalAsync(String nitrogenousSubject){
+        int valueHorizontal = 0;
+        int countFound = 0;
+        try{
+            for(String nitrogenousMutant: mutantGenDto.getDnaHorizontal()){
+                if(nitrogenousMutant.contains(nitrogenousSubject.substring(valueHorizontal,valueHorizontal+4))){
+                    countFound++;
+                    break;
+                }else{
+                    valueHorizontal++;
+                }
+            }
+        }catch(StringIndexOutOfBoundsException e){
+            log.error("nitrogenousSubject out range. ");
+        }finally{
+            return CompletableFuture.completedFuture(countFound);
+        }
+    }
+
+    private CompletableFuture<Integer> checkDnaMutantVerticalAsync(String nitrogenousSubject){
+        int valueVertical = 0;
+        int countFound = 0;
+        try{
+            for(String nitrogenousMutant: mutantGenDto.getDnaVertical()){
+                if(nitrogenousMutant.contains(nitrogenousSubject.substring(valueVertical,valueVertical+4))){
+                    countFound++;
+                    break;
+                }else{
+                    valueVertical++;
+                }
+            }
+        }catch(StringIndexOutOfBoundsException e){
+            log.error("nitrogenousSubject out range. ");
+        }finally{
+            return CompletableFuture.completedFuture(countFound);
+        }
+    }
+
+    private CompletableFuture<Integer> checkDnaMutantDiagonalAsync(String nitrogenousSubject){
+        int valueDiagonal = 0;
+        int countFound = 0;
+        try{
+            for(String nitrogenousMutant: mutantGenDto.getDnaDiagonal()){
+                if(nitrogenousMutant.contains(nitrogenousSubject.substring(valueDiagonal,valueDiagonal+4))){
+                    countFound++;
+                    break;
+                }else{
+                    valueDiagonal++;
+                }
+            }
+        }catch(StringIndexOutOfBoundsException e){
+            log.error("nitrogenousSubject out range. ");
+        }finally{
+            return CompletableFuture.completedFuture(countFound);
+        }
     }
 }

@@ -1,0 +1,18 @@
+spring:
+  port: 8080
+
+cloud.aws:
+  region:
+    static: us-west-1
+    auto: false
+  credentials:
+    access-key: AKIAQVFEBEFWWU3U2WEE
+    secret-key: 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
+    useDefaultAwsCredentialsChain: true
+  sqsname: mutant-sqs
+  end-point:
+    uri: https://sqs.us-west-1.amazonaws.com/045441163629/mutant-sqs
+  stack:
+    auto: false
+
+mutantdna: ATGCGA, CAGTGC, TTATGT, AGAAGG, CCCCTA, TCACTG

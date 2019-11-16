@@ -1,8 +1,11 @@
 package com.mutants.application.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Setter;
+import lombok.Getter;
 
+@Getter
+@Setter
 public class MutationEvaluationDto{
-    @JsonProperty("dna")
-    public String[] dna;
+    private String[] dna;
+    private boolean mutant;
 }

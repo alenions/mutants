@@ -31,12 +31,12 @@ public class MutantController{
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<?> stats(){ //Este falta aun
+    public ResponseEntity<?> stats(){
         try{
-            return new ResponseEntity<>(true, HttpStatus.OK);
+            return new ResponseEntity<>(mutantService.getStats(), HttpStatus.OK);
         }catch(Exception e){
             log.error("General Error. ");
-            return new ResponseEntity<>(false, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>("Not found Stats", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

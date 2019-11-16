@@ -1,8 +1,11 @@
 package com.mutants.application.service.impl;
 
 import com.mutants.application.dto.MutantGenDto;
+import com.mutants.application.dto.MutationEvaluationDto;
+import com.mutants.application.dto.StatsDto;
 import com.mutants.application.service.IMutantService;
-import com.mutants.application.service.ISqsService;
+import com.mutants.infrastructure.repository.ISubjectRepository;
+import com.mutants.infrastructure.service.ISqsService;
 import com.mutants.infrastructurecross.util.ArrayUtil;
 import com.mutants.infrastructurecross.util.Json;
 import lombok.extern.slf4j.Slf4j;
@@ -18,11 +21,11 @@ import java.util.concurrent.ExecutionException;
 @Slf4j
 public class MutantService implements IMutantService{
     @Autowired
-    private MutantGenDto mutantGenDto;
-
-    @Autowired
     private ISqsService sqsService;
-
+    @Autowired
+    private ISubjectRepository subjectRepository;
+    @Autowired
+    private MutantGenDto mutantGenDto;
     @Bean
     public MutantGenDto getArrayVertical(@Value("${mutantdna}") String[] mutantdna){
         MutantGenDto mutantGenDto = new MutantGenDto();
@@ -36,7 +39,6 @@ public class MutantService implements IMutantService{
     @Async("asyncExecutor")
     public boolean isMutant(String[] dna){
         int countFound = 0;
-        boolean isMutant = false;
         for(String nitrogenousSubject : dna){
             CompletableFuture<Integer> cantPointMutantHorizontal = checkDnaMutantHorizontalAsync(nitrogenousSubject);
             CompletableFuture<Integer> cantPointMutantVertical = checkDnaMutantVerticalAsync(nitrogenousSubject);
@@ -47,16 +49,54 @@ public class MutantService implements IMutantService{
                 cantPointMutantHorizontal.get() +
                 cantPointMutantVertical.get() +
                 cantPointMutantDiagonal.get();
-            } catch (InterruptedException | ExecutionException e) {
+
+                if (countFound >= 2) {
+                    MutationEvaluationDto mutationEvaluationDto = new MutationEvaluationDto();
+                    mutationEvaluationDto.setDna(dna);
+                    mutationEvaluationDto.setMutant(true);
+                    sqsService.sendNotificationSQS(Json.toJson(mutationEvaluationDto));
+                    return true;
+                }
+            }catch (InterruptedException | ExecutionException e) {
                 Thread.currentThread().interrupt();
                 log.error(e.getMessage());
-            }
-            if(countFound >= 2){
-                sqsService.sendNotificationSQS(Json.toJson(dna));
-                return true;
+            }catch (Exception e){
+                log.error(e.getMessage());
             }
         }
-        return isMutant;
+
+        try {
+            if (countFound < 2) {
+                MutationEvaluationDto mutationEvaluationDto = new MutationEvaluationDto();
+                mutationEvaluationDto.setDna(dna);
+                mutationEvaluationDto.setMutant(false);
+                sqsService.sendNotificationSQS(Json.toJson(mutationEvaluationDto));
+                return false;
+            }
+        }catch (Exception e){
+            log.error(e.getMessage());
+        }
+        return false;
+    }
+
+    @Override
+    public StatsDto getStats(){
+        long countHuman = subjectRepository.countHuman();
+        long countMutant = subjectRepository.countMutant();
+        double ratio;
+        if(countHuman == 0){
+            ratio = 1.0;
+        }else if(countMutant > 0){
+            ratio = (100 * (countMutant + countHuman) / countHuman) * 0.01;
+        }else{
+            ratio = 0.0;
+        }
+        StatsDto statsDto = new StatsDto();
+        statsDto.setCountHumanDna(countHuman);
+        statsDto.setCountMutantDna(countMutant);
+        statsDto.setRatio(ratio);
+
+        return statsDto;
     }
 
     private CompletableFuture<Integer> checkDnaMutantHorizontalAsync(String nitrogenousSubject){

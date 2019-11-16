@@ -6,13 +6,31 @@ cloud.aws:
     static: us-west-1
     auto: false
   credentials:
-    access-key: 
-    secret-key: 
+    access-key: AKIAIPH4XHDXMO3L5FKAALENIONS
+    secret-key: etVByDzroJDBYUdvMAbDkD+2YoMKIP6bElcyI36WALENIONS
     useDefaultAwsCredentialsChain: true
-  sqsname: mutant-sqs
+  sqsname: mutants-sqs
   end-point:
-    uri: https://sqs.us-west-1.amazonaws.com/374609988338/mutants-sqs
+    uri: https://sqs.us-west-1.amazonaws.com/374609988338/mutants-sqsalenions
   stack:
     auto: false
+
+spring.datasource:
+  platform: postgres
+  driverClassName: org.postgresql.Driver
+  url: jdbc:postgresql://localhost:5432/mutantdb
+  username: postgres
+  password: passwordmutantdb
+spring.tomcat:
+  removeAbandoned: true
+  removeAbandonedTimeout: 120
+  logAbandoned: true
+  maxActive: 50
+  maxIdle: 5
+  maxWait: 1000
+  validationQuery: "select 1"
+  testOnBorrow: true
+  testOnConnect: true
+  testWhileIdle: true
 
 mutantdna: ATGCGA, CAGTGC, TTATGT, AGAAGG, CCCCTA, TCACTG
